@@ -1,0 +1,29 @@
+== Basic Info ==
+
+Another university project in course 'Introduction to Programming Systems'.
+This one implements matrices -- adding, multiplying and searching for bubbles.
+
+== Examples ==
+
+For add two matrices:
+
+	./proj3 --vadd txt/a.txt txt/b.txt
+
+Multiply matrices:
+
+	./proj3 --mmult txt/mul_a.txt txt/mul_b.txt
+
+And for bubbles searching (matrix is slice through some material, where
+zero represents air bubble and non-zero number represents material, algorthm
+counts number of bubbles):
+
+	./proj3 --bubbles txt/bubbles.txt	# 5 bubbles
+
+and bubbles in vector of matrices:
+
+	./proj3 --extbubbles txt/bubbles_3D.tx	# 3 bubbles
+
+If you want to test multiplying big matrices (i.e. file with >100MB), just
+run ./txt/gen.awk with AWK and run:
+
+	./proj3 --mmult txt/big.txt txt/matrix.txt
