@@ -1,0 +1,26 @@
+==  Basic Info  ==
+
+This project implements run-length encoding (RLE) in C language. It was one of
+my project in university course 'Introduction to Programming Systems'.
+
+To compile and run, just clone this repository and run 'make decode'. Code is
+using C99 standard and I tested it with GCC (4.2.1).
+
+== Example ==
+
+For coding text, just type:
+
+	./proj1 -c 1 < in.txt.cs
+
+For decode, use:
+
+	./proj1 -d 1 < out.txt.cs
+
+Input and output of application is stdin and stdout, so you can use even Unix
+pipes:
+
+	echo "aaaaaaa bbb ccd" | ./proj1 -c 1
+
+== Licence ==
+
+Modified BSD License
