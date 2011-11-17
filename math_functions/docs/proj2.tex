@@ -1,0 +1,408 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Dokumentace k projektu č 2 do předmětu IZP. Tento soubor je upravená
+%% verze ukázkové dokumentace.
+%%
+%% Autor: Vlastimil Slinták <xslint01@stud.feec.vutbr.cz>
+%% Verze: 1.0
+%% Datum: po 22. listopadu 2010 14:16:40 UTC
+%% Popisovany soubor: proj2.c
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt,a4paper,titlepage,final]{article}
+	% Pri pouziti XeLaTeX pouzij unicode fonty
+	\usepackage{fontspec}
+	\usepackage{xunicode}
+	\usepackage{xltxtra}
+	\usepackage{amsfonts}		% Kvuli matematickym fontum
+	\usepackage{mathtools}
+
+	% cestina a fonty
+	\usepackage[czech]{babel}
+%	\usepackage[utf8]{inputenc}
+	% balicky pro odkazy
+	\usepackage[bookmarksopen,colorlinks,plainpages=false,urlcolor=blue,unicode]{hyperref}
+	\usepackage{url}
+	% obrazky
+	\usepackage{graphics}
+	% velikost stranky
+	\usepackage[top=3.5cm, left=2.5cm, text={17cm, 24cm}, ignorefoot]{geometry}
+
+	\usepackage{hyperref}		% Hypertextove odkazy v PDF
+	\hypersetup{%
+		backref,
+		colorlinks=true,
+		pdftitle={IZP: Projekt 2},
+		pdfauthor={Vlastimil Slinták <xslint01@stud.feec.vutbr.cz>},
+		pdfkeywords={IZP, projekt, iterace, rekurze, tanh, logax, wam, wqm},
+		pdfsubject={Projekt 2 do předmětu IZP - iterační výpočty}
+	}
+
+	% -- Vkladani obrazku
+	\newcommand{\fig}[3]{%
+		\begin{figure}[ht]
+			\centering\includegraphics[height=#3, keepaspectratio]{#1}%
+			\caption{#2}%
+		\end{figure}
+	}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% titulní strana
+\def\author{Vlastimil Slinták}
+\def\email{xslint01@stud.feec.vutbr.cz}
+\def\projname{Iterační výpočty}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{title.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% obsah
+\pagestyle{plain}
+\pagenumbering{roman}
+\setcounter{page}{1}
+\tableofcontents
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% textova zprava
+\newpage
+\pagestyle{plain}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Úvod} \label{uvod}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Tento dokument popisuje implementaci matematických funkcí \texttt{tanh} --
+hyperbolický tangens, \texttt{log} -- obecný logaritmus a dvou statistický
+funkcí -- aritmetický a kvadratický vážený průměr.
+
+Implementace prvních dvou funkcí nevyužívá standardní knihovnu \texttt{math.h},
+ani složitější datové typy. Statistické funkce již využívají matematickou
+knihovnu i jeden vlastní datový typ. V dalších sekcích tohoto dokumentu
+se podrobně podíváme na implementace všech čtyř funkcí.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Analýza problému a princip jeho řešení} \label{analyza}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Pro úspěšnou implementaci zadání je nutná znalost chování zde uváděných
+matematických funkcí. V této části se proto podíváme na jednotlivé funkce
+a popíšeme si jejich chování.
+
+%=============================================================================
+\subsection{Hyperbolický tangens}
+  Graf funkce \texttt{tanh} je na obrázku číslo \ref{grf-tanh}. Je zřejmé, že
+  argumentem funkce mohou být všechna reálná čísla. Grafem je lichá funkce,
+  která se pro rostoucí argument \texttt{x} asymptoticky blíží $1$, resp. $-1$.
+  O této funkci tedy platí následující tvrzení:
+
+  \[
+  f(-x) = -f(x); \\
+  \lim_{x \to \infty} \tanh x = 1; \\
+  \lim_{x \to -\infty} \tanh x = -1; \\
+  x \in \mathbb{R}; \\
+  \]
+
+  \fig{img/tanh.eps}{Graf funkce \texttt{tanh(x)}\label{grf-tanh}}{7cm}
+
+  Výpočet lze realizovat Taylorovou řadou, která ale pro \texttt{tanh} obsahuje
+  Bernoulliho čísla. Vhodnější implementace se jeví přes \texttt{sinh} a \texttt{cosh}:
+
+  \[
+  \tanh x = \frac{\sinh x}{\cosh x} = \frac{ \sum_{n=0}^{\infty} \frac{x^{2n+1}}{(2n + 1)!} }{ \sum_{n=0}^{\infty} \frac{x^{2n}}{(2n)!} }
+  \]
+  
+  Pro tento výpočet je tedy potřeba implementovat funkce \texttt{sinh} a \texttt{cosh},
+  případně provést výpočet obou funkcí během jednoho vyklu. Já jsem nakonec zvolil
+  jiný způsob výpočtu -- přes exponenciální funkci:
+
+  \[
+  \tanh x = \frac{e^{2x} - 1}{e^{2x} + 1}
+  \]
+
+  Exponenciální funkce lze spočítat pomocí Taylorovi řady následovně:
+  
+  \[
+  e^x = \sum_{x=0}^{\infty} \frac{x^n}{n!}
+  \]
+  
+
+%=============================================================================
+\subsection{Obecný logaritmus} \label{kap-log-mat}
+
+  Obecný logaritmus je definován pouze pro kladná reálná čísla kromě nuly a to
+  jak pro argument, tak pro základ. Pro $\log_a(x)$ platí:
+
+  \[
+  a, x \in \mathbb R^+;
+  f(x) \in \mathbb R
+  \]
+
+  Graf této funkce je na obrázku \ref{logax-img}. Klesající křivka je logaritmus
+  o základu $0.5$, zatímco rostoucí je dekadický logaritmus, tedy o základu
+  $10$.
+
+  \fig{img/logax.eps}{Grafy funkcí $\log_{10}(x)$ a $\log_{0.5}(x)$.\label{logax-img}}{7cm}
+
+  Dále platí následující výroky:
+
+  \[
+  \log_a x = \frac{\log_b x}{\log_b a}
+  \]
+  \[
+  \log_a x = -\log_{\frac{1}{a}} x,\;\;\; a \in (0,1)
+  \]
+  \[
+  \log_a x = -\log_a \frac{1}{x},\;\;\; x \in (0,1) 
+  \]
+
+  Využití těchto dvou rovnic bude vysvětleno v kapitole \ref{kap-logax} věnující
+  se implementaci obecného logaritmu.
+
+%=============================================================================
+\subsection{Statistické funkce}
+
+V této kapitole jsou uvedeny vzorce pro vážený aritmetický a kvadratocký průměr.
+Popis implementace je pak v kapitole \ref{kap-stat}.
+
+V obou níže uvedených vzorcích platí --- $x_i$ je i-tý prvek průměru a $w_i$ je
+jeho váha.
+
+\paragraph{Vážený aritmetický průměr}
+
+\[
+\bar{x} = \frac{\sum^k_{i=1} x_i w_i}{\sum^k_{i=1} w_i}
+\]
+
+\paragraph{Vážený kvadratický průměr}
+
+\[
+\bar{x} = \sqrt{\frac{\sum^k_{i=1} x^2_i w_i}{\sum^k_{i=1} w_i}}
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Návrh řešení problému} \label{navrh}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%=============================================================================
+\subsection{Analýza vstupních dat}
+
+Na vstupu od uživatele očekáváme pouze desetinná čísla ve tvaru například
+$3.4$, $3e-4$, případně speciální konstantu $inf$, která představuje
+nekonečno. Jakýkoliv jiný vstup bude programem vyhodnocen jako chybný a
+uživateli to bude oznámeno chybovým hlášením.
+
+%=============================================================================
+\subsection{Specifikace testů} \label{testy}
+
+
+\paragraph{Test 1:} Chybný vstup $\longrightarrow$ Detekce chyby.
+\begin{verbatim}
+./proj2 --tanh 5 <<< "bla"
+./proj2 --tanh 5 <<< "nan"
+./proj2 --tanh 5 <<< "0,4"
+
+./proj2 --logax 5 10 <<< "bla"
+./proj2 --logax 5 10 <<< "nan"
+./proj2 --logax 5 10 <<< "0,1"
+
+./proj2 --wam <<< "bla"
+./proj2 --wam <<< "4.2"
+./proj2 --wqm <<< "4.2 bla"
+./proj2 --wqm <<< "4,2 nan"
+\end{verbatim} 
+
+\paragraph{Test 3:} Vstup mimo povolený rozsah hodnot $\longrightarrow$ Detekce
+chyby.
+\begin{verbatim}
+./proj2 --logax 10 10 <<< "-3.0"
+./proj2 --logax 10 -1 <<< "3.0"
+./proj2 --logax 10 0 <<< "3.0"
+./proj2 --logax 10 2 <<< "0"
+\end{verbatim} 
+
+\paragraph{Test 4:} Správný vstup $\longrightarrow$ Výsledek
+
+\vspace{1em}\begin{tabular}{ll} % ll = 2 sloupce zarovnane: left,left
+vstup & očekávaný výstup \\
+\hline
+\verb|./proj2 --tanh 5 <<< "0.5"| & 4.6211715726e-01 \\
+\verb|./proj2 --tanh 5 <<< "-100"| & -1.0000000000e+00 \\
+\verb|./proj2 --logax 5 2 <<< "16"| & 4.0000000000e+00 \\
+\verb|./proj2 --wam <<< \| & 1.5000000000e+00 \\
+  "1.5 1.0 2.5 2.0 3.5 3.0" & 2.1666666667e+00 \\
+& 2.8333333333e+00 \\
+\end{tabular}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Popis řešení} \label{reseni}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Vlastní implementace jednotlivých funkcí zohledňuje jejich chování, které
+bylo popsáno v kapitole \ref{analyza}.
+
+%=============================================================================
+\subsection{Ovládání programu}
+
+Program je ovládán z terminálu a jeho výstup je čistě textový. Veškerá uživatelská
+data jsou načítána ze standardního vstupu a jsou zapisována na standardní výstup.
+Chybová hlášení se tisknou na standardní chybový výstup. V případě výskytu chyby
+program končí a vrací \texttt{1}, jinak \texttt{0}. Program tak může uživatel
+spouštět interaktivně i neinteraktivně (například ve skriptech).\newline
+
+\noindent
+Argumenty programu jsou:
+
+\begin{tabular}{r||l} \hline \hline
+	Argument & Popis \\ \hline \hline
+	$-$h		 & Vypíše nápovědu a skončí. \\
+	$--$tanh sigdig N	 & Vypočítá tanh s přesností na \texttt{sigdig} desetinných míst. \\
+	$--$logax sigdig a & Vypočítá logaritmus o základu 'a' s přesností na \texttt{sigdig}. \\
+	$--$wam		 & Průběžně počítá vážený aritmetický průmer. \\
+	$--$wqm		 & Průběžně počítá vážený kvadratocký průměr. \\
+\end{tabular}
+
+%=============================================================================
+\subsection{Implementace \texttt{tanh}}
+
+  Implementace využívá poznatků z kapitoly \ref{analyza}. Využívám faktu, že
+  je funkce lichá, a proto není potřeba nijak speciálně řešit záporné argumenty
+  funkce. 
+
+  Jak již bylo popsáno výše, moje implementace nevyužívá funkcí \texttt{sinh} ani
+  \texttt{cosh}, ale počítá hyperbolický tangens přes exponenciální funkci. Tato
+  funkce je rychle rostoucí, již pro malé argumenty nabývá velkých hodnot. Obecně
+  by se dala řešit pomocí Taylorovy řady, která ale
+  pro velká číslo konverguje příliš pomalu. Nejrychlejší konvergence
+  je pro čísla menší jak jedna. Proto je samotný výpočet exponeniální funkce rozdělen do
+  dvou částí. Na část celočíselnou a zlomkovou.
+
+  Argument exponenciální funkce je rozdělen na dvě části. Mějme například číslo $3.5$,
+  které rozdělíme na $3$ a $0.5$. Funkce \texttt{approx\_exp()}, která bere dva argumenty --
+  číslo \texttt{x} a uživatelem zadanou přesnost výpočtu $\varepsilon$ -- postupně volá
+  dvě funkce \texttt{approx\_by\_int\_exp()} a \texttt{approx\_by\_dbl\_exp()}. Prvně
+  jmenovaná funkce počítá celočíselnou část argumentu a druhá desetinnou. Oba
+  výsledky se pak vynásobí a vrátí uživateli. Výpočet využívá rovnosti:
+
+  \[
+  e^{a + b} = e^a \cdot e^b
+  \]
+
+  Funkce \texttt{approx\_by\_dbl\_exp} implementuje Taylorovu řadu. Jelikož ji voláme
+  pouze pro čísla menší než jedna a větší než nula, podává uspokojivé výsledky při
+  malém počtu iterací. Druhá funkce, \texttt{approx\_by\_int\_exp} pracuje s celými
+  čísly. Pro příklad čísla $3$ funkce provede dvě iterace. Číslo $3$ se dá ve
+  dvojkové soustavě zapsat jako $0011$ -- tedy součet čísel $1$ a $2$ a tedy jako:
+
+  \[
+  e^{3} = e^{1} \cdot e^{2}
+  \]
+
+  Funkce v každé iteraci násobí exponent mocnin dvojky k průběžnému výsledku. Počet nutných
+  iterací je roven nejvyššímu bitu argumentu exponenciální funkce. Pro číslo $8$ jsou
+  to $4$ iterace, pro číslo $32$ jen $6$, atd\ldots\newline
+
+  \noindent
+  Výpočet \texttt{tanh} závisí na rychlosti a přesnoti implementace exponenciální
+  funkce. Jelikož je funkce lichá, není potřeba upravovat algoritmus pro záporné
+  argumenty, stačí jenom výsledku změnit znaménko. Také se při výpočtu využívá faktu,
+  že funkce se velmi rychle přiblíží číslu jedna. Stačí tedy na začátku zjistit maximální
+  hodnotu argumentu \texttt{tanh}, pro který již nestačí přesnost datového typu
+  \texttt{double}. To vypočítáme přes funkci \texttt{artanh}:
+
+  \[
+  x_{max} = artanh \; \varepsilon_{dbl} = \frac{1}{2} \ln \left( \frac{1 + \varepsilon_{dbl}}{1 - \varepsilon_{dbl}} \right)
+  \]
+
+  kde $x_{max}$ je hledaná maximální hodnota, kterou jsme ještě schopni vyčíslit pomocí
+  \texttt{double} a $\varepsilon_{dbl}$ je konstanta \texttt{DBL\_EPSILON} z knihovny
+  \texttt{float.h}.\newline
+
+  \noindent
+  Tato maximální hodnota se vypočítá jednou, při spuštění programu a ukládá se do
+  \texttt{IZP\_TANH\_MAX}. Pro argumenty $x > IZP\_TANH\_MAX$ se proto vrací výsledek
+  $1$ bez dalšího výpočtu.
+
+%=============================================================================
+\subsection{Implementace \texttt{logax}} \label{kap-logax}
+
+Funkce obecného logaritmu se volá pomocí \texttt{approx\_log\_a()}. Zde
+se rozhodne, jestli je argument nebo základ logaritmu menší jak jedna. Pokud ano,
+vypočítá se převrácená hodnota čísla a výsledek se pak vrací s opačným znaménkem.
+Tento poznatek, popsaný v kapitole \ref{kap-log-mat}, jsem využil při návrhu
+algoritmu pro výpočet logaritmu -- očekávám vstupní hodnoty pouze větší jak $1$.
+
+Podobně jako u hyperbolického tangens i zde je samotný výpočet rozdělen do dvou
+částí -- na celočíselný a desetinný výsledek. Výsledky jsou pak sečteny
+a vráceny uživateli. Toto je implementováno ve funkcích \texttt{integer\_log\_a1\_x1()}
+a \texttt{fractional\_log\_a1\_x1()}.\newline
+
+\noindent
+Princip výpočtu si ukážeme na funkci \texttt{integer\_log\_a1\_x1()}. V následujícím
+textu předpokládám toto:
+
+\[
+y = \log_a x; \;\;\;\; a^y = x
+\]
+
+Funkce bere čísla \texttt{a} a \texttt{x} jako své argumenty. \texttt{y} je výsledek,
+který je předáván jako návratová hodnota. Základní myšlenka algoritmu je projít všechny
+bity čísla \texttt{y} a zjistit jestli jsou nastavené, nebo ne. Toto probíhá v
+jednom cyklu, kdy argument \texttt{x} dělím číslem $a^n$ (\texttt{n} je n-tý bit v
+\texttt{y}). Pokud je výsledek dělení větší jak jedna, je daný bit čísla \texttt{y}
+nastaven. Můžeme tak napsat:
+
+\[
+x_n = \frac{x_{n-1}}{a^n}
+\]
+
+Jestli je \texttt{n}-tý bit výsledku \texttt{y} nastaven, je v \texttt{n}-té iteraci
+\texttt{$x_n$} větší jak jedna. Číslo \texttt{y} inkrementujeme o jedničku, posuneme
+jeho bity doleva a pokračujeme další iterací. Jakmile takto určíme všechny bity čísla \texttt{y},
+máme hledaný vysledek uložen v \texttt{y} a zbytek v \texttt{x}. Tento zbytek je
+dále předán druhé funkci -- \texttt{fractional\_log\_a1\_x1()} -- která je principiálně
+stejná jako první, ale počítá logaritmus čísla \texttt{x} menší jak základ \texttt{a}.
+
+%=============================================================================
+\subsection{Implementace \texttt{wam} a \texttt{wqm}} \label{kap-stat}
+
+Statistické funkce jsou implementovány ve funkcích \texttt{calc\_wam} -- vážený
+aritmetický průměr -- a \texttt{calc\_wqm} -- vážený kvadratický průměr. Obě funkce
+berou jako první parametr ukazatel na strukturu \texttt{s\_mean} do které se ukládají
+průběžné výsledky, druhým a třetím parametrem jsou čísla typu \texttt{double}, které
+představují hodnotu, resp. váhu \texttt{n}-tého prvku. Návratová hodnota obou funkcí
+je průběžný výsledek.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% seznam citované literatury: každá položka je definována příkazem
+% \bibitem{xyz}, kde xyz je identifikátor citace (v textu použij: \cite{xyz})
+\begin{thebibliography}{1}
+
+% jedna citace:
+\bibitem{kalendar}
+KNUTH E. Donald: \emph{The Art Of Computer Programming, Volume 2}.
+Addison-Wesley, 1997, ISBN 0-20-189684-2.
+
+\end{thebibliography}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% přílohy
+\appendix
+
+\section{Metriky kódu} \label{metriky}
+\paragraph{Počet souborů:} 1 soubor
+\paragraph{Počet řádků zdrojového textu:} 632 řádků
+\paragraph{Velikost statických dat:} 15361B
+\paragraph{Velikost spustitelného souboru:} 14544B (systém Darwin 10.5.0, 64 bitová
+architektura, gcc 4.2.1, při překla\-du bez ladicích informací)
+
+
+\end{document}

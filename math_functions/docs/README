@@ -1,0 +1,28 @@
+Vzorovou dokumentaci lehce prelozite do formatu PDF na stroji GNU/Linux s
+nainstalovanym balikem texlive-latex.
+
+POSTUP
+======
+
+1. V souboru proj2.tex upravte cast s vasi identifikaci (v souboru je tato cast
+vyznacena vykricniky: !!!!!!!!!!!!!!!!!!!!!!).
+
+2. Vlastni dokumentaci k projektu piste do souboru proj2.tex. Nezabyvejte se
+zpusobem formatovani, rozlisujte pouze hierarchii textu (sekce, podsekce,
+odrazky, matematicky vzorec, odkaz na obrazek). Nezabyvejte se tim, jak
+vysledek vypada - to je ukol pro LaTeX. Odevzdejte proste to, co LaTeX vytvori.
+
+3. Obrazky muzete vytvorit ve formatu PNG, JPG nebo FIG. Obrazky ulozte do
+adresare img/ a upravte soubor img/makefile (inspirujte se jeho aktualnim
+obsahem). Pro prevod do pozadovaneho EPS formatu budete pravdepodobne
+potrebovat sadu nastroju ImageMagick nebo transfig (stejne tak se bude
+pravdepodobne jmenovat balik ve vasi linuxove distribuci).
+
+4. Seznam literatury najdete ke konci souboru proj2.tex. Tento seznam upravte
+pro ucely vasi dokumentace.
+
+5. Vyskladejte zdrojovou dokumentaci do formatu PDF prikazem:
+    $ make
+
+6. Vycisteni adresare od nepotrebnych souboru provedete prikazem:
+    $ make clean
