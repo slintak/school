@@ -4,3 +4,4 @@ Some of my school projects.
 
 rle 		-- Implementation of run-length encoding in C.
 matrices 	-- Adding, multiplying, etc.
+math_functions	-- Math functions in C
